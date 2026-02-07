@@ -6,90 +6,127 @@ interface IAidToken {
 }
 
 contract AidPlatform {
-    struct Campaign {
-        string title;
-        uint256 goal;
-        uint256 deadline;
-        uint256 raised;
-        bool finalized;
-        address creator;
+    bool private locked;
+    modifier nonReentrant() {
+        require(!locked, "Reentrancy");
+        locked = true;
+        _;
+        locked = false;
     }
 
-    Campaign[] public campaigns;
+    struct Campaign {
+        address creator;
+        string title;
+        uint256 goalWei;
+        uint256 deadline;
+        uint256 raisedWei;
+        bool finalized;
+        bool successful;
+        bool withdrawn;
+    }
 
-    // campaignId => donor => amount
+    IAidToken public immutable rewardToken;
+    uint256 public constant TOKEN_RATE = 100;
+
+    uint256 public campaignCount;
+    mapping(uint256 => Campaign) public campaigns;
     mapping(uint256 => mapping(address => uint256)) public contributions;
 
-    IAidToken public aidToken;
+    event CampaignCreated(uint256 indexed id, address indexed creator, string title, uint256 goalWei, uint256 deadline);
+    event Contributed(uint256 indexed id, address indexed contributor, uint256 amountWei, uint256 rewardMinted);
+    event Finalized(uint256 indexed id, bool successful);
+    event Withdrawn(uint256 indexed id, address indexed creator, uint256 amountWei);
+    event Refunded(uint256 indexed id, address indexed contributor, uint256 amountWei);
 
-    event CampaignCreated(uint256 id, string title, uint256 goal, uint256 deadline);
-    event DonationMade(uint256 id, address donor, uint256 amount);
-    event CampaignFinalized(uint256 id, uint256 totalRaised);
-
-    constructor(address _aidToken) {
-        aidToken = IAidToken(_aidToken);
+    constructor(address tokenAddress) {
+        require(tokenAddress != address(0), "token address is zero");
+        rewardToken = IAidToken(tokenAddress);
     }
 
-    // 1️⃣ Create campaign
-    function createAidRequest(
-        string memory _title,
-        uint256 _goal,
-        uint256 _duration
-    ) external {
-        require(_goal > 0, "Goal must be > 0");
-        require(_duration > 0, "Duration must be > 0");
+    function createCampaign(string calldata title, uint256 goalWei, uint256 durationSeconds) external returns (uint256 id) {
+        require(bytes(title).length > 0, "title empty");
+        require(goalWei > 0, "goal must be > 0");
+        require(durationSeconds > 0, "duration must be > 0");
 
-        campaigns.push(
-            Campaign({
-                title: _title,
-                goal: _goal,
-                deadline: block.timestamp + _duration,
-                raised: 0,
-                finalized: false,
-                creator: msg.sender
-            })
-        );
+        id = ++campaignCount;
+        uint256 deadline = block.timestamp + durationSeconds;
 
-        emit CampaignCreated(
-            campaigns.length - 1,
-            _title,
-            _goal,
-            block.timestamp + _duration
-        );
+        campaigns[id] = Campaign({
+            creator: msg.sender,
+            title: title,
+            goalWei: goalWei,
+            deadline: deadline,
+            raisedWei: 0,
+            finalized: false,
+            successful: false,
+            withdrawn: false
+        });
+
+        emit CampaignCreated(id, msg.sender, title, goalWei, deadline);
     }
 
-    // 2️⃣ Donate to campaign
-    function donate(uint256 _id) external payable {
-        Campaign storage campaign = campaigns[_id];
+    function contribute(uint256 id) external payable nonReentrant {
+        Campaign storage c = campaigns[id];
+        require(c.creator != address(0), "campaign not found");
+        require(block.timestamp < c.deadline, "campaign ended");
+        require(msg.value > 0, "zero amount");
 
-        require(block.timestamp < campaign.deadline, "Campaign ended");
-        require(!campaign.finalized, "Already finalized");
-        require(msg.value > 0, "Donation must be > 0");
+        c.raisedWei += msg.value;
+        contributions[id][msg.sender] += msg.value;
 
-        campaign.raised += msg.value;
-        contributions[_id][msg.sender] += msg.value;
+        uint256 rewardAmount = msg.value * TOKEN_RATE;
+        rewardToken.mint(msg.sender, rewardAmount);
 
-        // mint reward token (1 AID per 0.001 ETH for example)
-        uint256 reward = msg.value / 1e15;
-        aidToken.mint(msg.sender, reward);
-
-        emit DonationMade(_id, msg.sender, msg.value);
+        emit Contributed(id, msg.sender, msg.value, rewardAmount);
     }
 
-    // 3️⃣ Finalize campaign
-    function finalizeRequest(uint256 _id) external {
-        Campaign storage campaign = campaigns[_id];
+    function finalize(uint256 id) external {
+        Campaign storage c = campaigns[id];
+        require(c.creator != address(0), "campaign not found");
+        require(!c.finalized, "already finalized");
+        require(block.timestamp >= c.deadline, "campaign not ended");
 
-        require(block.timestamp >= campaign.deadline, "Campaign still active");
-        require(!campaign.finalized, "Already finalized");
+        c.finalized = true;
+        c.successful = (c.raisedWei >= c.goalWei);
 
-        campaign.finalized = true;
-
-        emit CampaignFinalized(_id, campaign.raised);
+        emit Finalized(id, c.successful);
     }
 
-    // Helper
-    function getCampaignsCount() external view returns (uint256) {
-        return campaigns.length;
+    function withdraw(uint256 id) external nonReentrant {
+        Campaign storage c = campaigns[id];
+        require(c.creator != address(0), "campaign not found");
+        require(msg.sender == c.creator, "not creator");
+        require(c.finalized, "not finalized");
+        require(c.successful, "not successful");
+        require(!c.withdrawn, "already withdrawn");
+
+        c.withdrawn = true;
+        uint256 amount = c.raisedWei;
+
+        (bool ok, ) = payable(c.creator).call{value: amount}("");
+        require(ok, "withdraw failed");
+
+        emit Withdrawn(id, c.creator, amount);
+    }
+
+    function refund(uint256 id) external nonReentrant {
+        Campaign storage c = campaigns[id];
+        require(c.creator != address(0), "campaign not found");
+        require(c.finalized, "not finalized");
+        require(!c.successful, "campaign successful");
+
+        uint256 amount = contributions[id][msg.sender];
+        require(amount > 0, "nothing to refund");
+
+        contributions[id][msg.sender] = 0;
+
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        require(ok, "refund failed");
+
+        emit Refunded(id, msg.sender, amount);
+    }
+
+    function contributionOf(uint256 id, address user) external view returns (uint256) {
+        return contributions[id][user];
     }
 }
