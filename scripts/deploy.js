@@ -6,9 +6,6 @@ async function main() {
   await token.waitForDeployment();
 
   console.log("AidToken deployed to:", await token.getAddress());
-
-  // если платформа уже задеплоена
-  // await token.setPlatform(PLATFORM_ADDRESS);
 }
 
 main().catch((error) => {

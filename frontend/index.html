@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Decentralized Aid Platform</title>
+
+    <!-- styles -->
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- ethers -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Decentralized Aid Platform</h1>
+      <p class="subtitle">
+        A blockchain-based charity platform running on Ethereum Sepolia testnet
+      </p>
+
+      <!-- Wallet -->
+      <div class="section">
+        <div class="label">Wallet connection</div>
+        <button onclick="connectWallet()">Connect Wallet</button>
+        <p id="account" class="value">Not connected</p>
+      </div>
+
+      <!-- Token balance -->
+      <div class="section">
+        <div class="label">Your AID Token Balance</div>
+        <button onclick="checkTokenBalance()">Check AID Token Balance</button>
+        <p id="tokenBalance" class="value">-</p>
+        <p class="note">
+          AID tokens are symbolic ERC-20 rewards issued for donations.
+        </p>
+      </div>
+
+      <!-- Campaign -->
+      <div class="section">
+        <div class="label">Active Charity Campaign</div>
+        <p class="value"><strong>Title:</strong> Help Children</p>
+        <p class="value"><strong>Goal:</strong> 1 ETH</p>
+        <p class="value">
+          <strong>Deadline:</strong> Enforced by smart contract
+        </p>
+
+        <button onclick="donate()">Donate 0.01 ETH</button>
+        <p id="txStatus"></p>
+      </div>
+      <p class="value">
+        <strong>Deadline:</strong>
+        <span id="deadline">loading...</span>
+      </p>
+
+      <p class="value">
+        <strong>Status:</strong>
+        <span id="status">-</span>
+      </p>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
