@@ -30,7 +30,7 @@ contract AidPlatform {
         aidToken = IAidToken(_aidToken);
     }
 
-    // 1️⃣ Create campaign
+
     function createAidRequest(
         string memory _title,
         uint256 _goal,
@@ -58,7 +58,7 @@ contract AidPlatform {
         );
     }
 
-    // 2️⃣ Donate to campaign
+
     function donate(uint256 _id) external payable {
         Campaign storage campaign = campaigns[_id];
 
@@ -76,7 +76,7 @@ contract AidPlatform {
         emit DonationMade(_id, msg.sender, msg.value);
     }
 
-    // 3️⃣ Finalize campaign
+    
     function finalizeRequest(uint256 _id) external {
         Campaign storage campaign = campaigns[_id];
 
