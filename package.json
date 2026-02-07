@@ -1,7 +1,7 @@
 {
   "name": "final_bt",
   "version": "1.0.0",
-  "description": "",
+  "description": "This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,11 +10,21 @@
   "author": "",
   "license": "ISC",
   "type": "module",
-  "devDependencies": {
-    "hardhat": "^3.1.7"
-  },
   "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@openzeppelin/contracts": "^5.4.0",
-    "ethers": "^6.16.0"
+    "ethers": "^6.16.0",
+    "save-dev": "^0.0.1-security"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jsowkw1/FINAL_BT.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jsowkw1/FINAL_BT/issues"
+  },
+  "homepage": "https://github.com/jsowkw1/FINAL_BT#readme",
+  "devDependencies": {
+    "hardhat": "^2.22.0"
   }
 }
