@@ -1,26 +1,25 @@
 const SEPOLIA_CHAIN_ID = 11155111n;
-// CONTRACT ADDRESSES
+let selectedCampaignId = null;
+// === CONTRACT ADDRESSES ===
 const AID_PLATFORM_ADDRESS = "0xfea1fB16e14E4cD3A3C1D3A95948BBA7a45f4A61";
 const AID_TOKEN_ADDRESS = "0x4E2F00dBE722d905c8CB3da8c1d9af7bc2AF22cB";
 
-//ABI
+// === ABI ===
 const platformABI = [
-  // functions
   "function donate(uint256 _id) external payable",
   "function createAidRequest(string,uint256,uint256) external",
   "function campaigns(uint256) view returns (string title, uint256 goal, uint256 deadline, uint256 raised, bool finalized, address creator)",
-
-  // EVENT
   "event CampaignCreated(uint256 id, string title, uint256 goal, uint256 deadline)",
 ];
+
 const tokenABI = ["function balanceOf(address) view returns (uint256)"];
 
-// GLOBALS
+// === GLOBALS ===
 let provider;
 let signer;
 let userAddress;
 
-// CONNECT WALLET
+// === CONNECT WALLET ===
 async function connectWallet() {
   if (!window.ethereum) {
     alert("MetaMask not found");
@@ -32,9 +31,7 @@ async function connectWallet() {
   signer = await provider.getSigner();
   userAddress = await signer.getAddress();
 
-  // CHECK NETWORK
   const network = await provider.getNetwork();
-
   if (network.chainId !== SEPOLIA_CHAIN_ID) {
     alert("Please switch MetaMask to Sepolia testnet");
     return;
@@ -42,31 +39,28 @@ async function connectWallet() {
 
   document.getElementById("account").innerText = "Connected: " + userAddress;
 }
-//CHECK ETH BALANCE
+
+// === ETH BALANCE ===
 async function checkEthBalance() {
-  if (!provider || !userAddress) {
-    alert("Connect wallet first");
-    return;
-  }
+  if (!provider || !userAddress) return;
 
   const balanceWei = await provider.getBalance(userAddress);
-  const balanceEth = ethers.formatEther(balanceWei);
-
-  document.getElementById("ethBalance").innerText = balanceEth + " ETH";
+  document.getElementById("ethBalance").innerText =
+    ethers.formatEther(balanceWei) + " ETH";
 }
-//CHECK TOKEN BALANCE
+
+// === TOKEN BALANCE ===
 async function checkTokenBalance() {
   if (!provider || !userAddress) return;
 
   const token = new ethers.Contract(AID_TOKEN_ADDRESS, tokenABI, provider);
-
   const balance = await token.balanceOf(userAddress);
 
   document.getElementById("tokenBalance").innerText =
     ethers.formatUnits(balance, 18) + " AID";
 }
 
-//CREATE CAMPAIGN
+// === CREATE CAMPAIGN ===
 async function createCampaign() {
   if (!signer) {
     alert("Connect wallet first");
@@ -88,10 +82,11 @@ async function createCampaign() {
     signer,
   );
 
-  const goalWei = ethers.parseEther(goalEth);
-  const durationSeconds = Number(durationDays) * 24 * 60 * 60;
-
-  const tx = await platform.createAidRequest(title, goalWei, durationSeconds);
+  const tx = await platform.createAidRequest(
+    title,
+    ethers.parseEther(goalEth),
+    Number(durationDays) * 24 * 60 * 60,
+  );
 
   document.getElementById("createStatus").innerText =
     "Transaction sent: " + tx.hash;
@@ -99,7 +94,6 @@ async function createCampaign() {
   const receipt = await tx.wait();
 
   let campaignId = null;
-
   for (const log of receipt.logs) {
     try {
       const parsed = platform.interface.parseLog(log);
@@ -107,33 +101,53 @@ async function createCampaign() {
         campaignId = parsed.args.id.toString();
         break;
       }
-    } catch (e) {}
+    } catch {}
   }
 
-  if (campaignId === null) {
-    document.getElementById("createStatus").innerText =
-      "Campaign created, but ID not found in events";
-    return;
-  }
-
-  document.getElementById(
-    "createStatus",
-  ).innerText = `Campaign created! ID: ${campaignId}`;
+  document.getElementById("createStatus").innerText =
+    campaignId !== null
+      ? `Campaign created! ID: ${campaignId}`
+      : "Campaign created, but ID not found";
 }
 
-//DONATE
-async function donate() {
-  if (!signer) {
-    alert("Connect wallet first");
-    return;
-  }
+// === SHOW CAMPAIGN ===
+async function showCampaign() {
+  if (!provider) return;
 
   const campaignId = document.getElementById("donateId").value;
-
   if (campaignId === "") {
     alert("Enter campaign ID");
     return;
   }
+
+  const platform = new ethers.Contract(
+    AID_PLATFORM_ADDRESS,
+    platformABI,
+    provider,
+  );
+
+  const campaign = await platform.campaigns(campaignId);
+
+  document.getElementById("campaignTitle").innerText = campaign.title;
+
+  const deadline = Number(campaign.deadline);
+  document.getElementById("deadline").innerText = new Date(
+    deadline * 1000,
+  ).toLocaleString();
+
+  let status = "Active";
+  if (Math.floor(Date.now() / 1000) > deadline) status = "Ended";
+  if (campaign.finalized) status = "Finalized";
+
+  document.getElementById("status").innerText = status;
+}
+
+// === DONATE ===
+async function donate() {
+  if (!signer) return;
+
+  const campaignId = document.getElementById("donateId").value;
+  if (campaignId === "") return;
 
   const platform = new ethers.Contract(
     AID_PLATFORM_ADDRESS,
@@ -149,73 +163,46 @@ async function donate() {
     "Transaction sent: " + tx.hash;
 
   await tx.wait();
-
   document.getElementById("txStatus").innerText = "Donation confirmed!";
 }
 
-//LOAD CAMPAIGN INFO (BY ID)
-async function loadCampaign() {
+// === CAMPAIGN LIST ===
+async function loadCampaignList() {
   if (!provider) return;
 
-  const campaignId = document.getElementById("donateId").value;
-  if (campaignId === "") return;
-
   const platform = new ethers.Contract(
     AID_PLATFORM_ADDRESS,
     platformABI,
     provider,
   );
 
-  const campaign = await platform.campaigns(campaignId);
+  const list = document.getElementById("campaignList");
+  list.innerHTML = "";
 
-  const deadline = Number(campaign.deadline);
-  const finalized = campaign.finalized;
-  const now = Math.floor(Date.now() / 1000);
+  let id = 0;
+  while (true) {
+    try {
+      const c = await platform.campaigns(id);
 
-  const date = new Date(deadline * 1000);
-  document.getElementById("deadline").innerText = date.toLocaleString();
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <strong>ID ${id}</strong> — ${c.title}
+        <button onclick="selectCampaign(${id})">Select</button>
+      `;
+      list.appendChild(li);
+      id++;
+    } catch {
+      break;
+    }
+  }
 
-  let status = "Active";
-  if (now > deadline) status = "Ended";
-  if (finalized) status = "Finalized";
-
-  document.getElementById("status").innerText = status;
+  if (id === 0) {
+    list.innerHTML = "<li>No campaigns found</li>";
+  }
 }
 
-async function showCampaign() {
-  if (!provider) {
-    alert("Connect wallet first");
-    return;
-  }
-
-  const campaignId = document.getElementById("donateId").value;
-  if (campaignId === "") {
-    alert("Enter campaign ID");
-    return;
-  }
-
-  const platform = new ethers.Contract(
-    AID_PLATFORM_ADDRESS,
-    platformABI,
-    provider,
-  );
-
-  const campaign = await platform.campaigns(campaignId);
-
-  // title
-  document.getElementById("campaignTitle").innerText = campaign.title;
-
-  // deadline
-  const deadline = Number(campaign.deadline);
-  const date = new Date(deadline * 1000);
-  document.getElementById("deadline").innerText = date.toLocaleString();
-
-  // status
-  const now = Math.floor(Date.now() / 1000);
-  let status = "Active";
-
-  if (now > deadline) status = "Ended";
-  if (campaign.finalized) status = "Finalized";
-
-  document.getElementById("status").innerText = status;
+// === SELECT FROM LIST ===
+function selectCampaign(id) {
+  document.getElementById("donateId").value = id;
+  showCampaign();
 }

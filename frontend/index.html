@@ -60,14 +60,19 @@
         <p id="createStatus" class="value"></p>
       </div>
 
+      <!-- CAMPAIGN LIST -->
+      <div class="section">
+        <div class="label">Campaign List</div>
+        <button onclick="loadCampaignList()">Load Campaigns</button>
+        <ul id="campaignList"></ul>
+      </div>
+
       <!-- DONATE -->
       <div class="section">
         <div class="label">Donate to Campaign</div>
 
-        <input id="donateId" placeholder="Campaign ID (e.g. 0)" />
-        <br /><br />
-
-        <button onclick="showCampaign()">Show Campaign</button>
+        <input id="donateId" readonly />
+        <p class="note">Campaign ID is selected from the list above</p>
         <br /><br />
 
         <p class="value">

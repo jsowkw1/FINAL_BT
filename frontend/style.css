@@ -81,3 +81,11 @@ button:hover {
   color: #666;
   margin-top: 10px;
 }
+
+#campaignList li {
+  margin-bottom: 10px;
+}
+
+#campaignList button {
+  margin-left: 10px;
+}
