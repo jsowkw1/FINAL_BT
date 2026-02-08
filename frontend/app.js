@@ -1,10 +1,10 @@
 const SEPOLIA_CHAIN_ID = 11155111n;
-let selectedCampaignId = null;
-// === CONTRACT ADDRESSES ===
+
+// CONTRACT ADDRESSES
 const AID_PLATFORM_ADDRESS = "0xfea1fB16e14E4cD3A3C1D3A95948BBA7a45f4A61";
 const AID_TOKEN_ADDRESS = "0x4E2F00dBE722d905c8CB3da8c1d9af7bc2AF22cB";
 
-// === ABI ===
+// ABI
 const platformABI = [
   "function donate(uint256 _id) external payable",
   "function createAidRequest(string,uint256,uint256) external",
@@ -14,12 +14,12 @@ const platformABI = [
 
 const tokenABI = ["function balanceOf(address) view returns (uint256)"];
 
-// === GLOBALS ===
+// GLOBALS
 let provider;
 let signer;
 let userAddress;
 
-// === CONNECT WALLET ===
+// CONNECT WALLET
 async function connectWallet() {
   if (!window.ethereum) {
     alert("MetaMask not found");
@@ -40,7 +40,7 @@ async function connectWallet() {
   document.getElementById("account").innerText = "Connected: " + userAddress;
 }
 
-// === ETH BALANCE ===
+// ETH BALANCE
 async function checkEthBalance() {
   if (!provider || !userAddress) return;
 
@@ -49,7 +49,7 @@ async function checkEthBalance() {
     ethers.formatEther(balanceWei) + " ETH";
 }
 
-// === TOKEN BALANCE ===
+// TOKEN BALANCE
 async function checkTokenBalance() {
   if (!provider || !userAddress) return;
 
@@ -60,7 +60,7 @@ async function checkTokenBalance() {
     ethers.formatUnits(balance, 18) + " AID";
 }
 
-// === CREATE CAMPAIGN ===
+// CREATE CAMPAIGN
 async function createCampaign() {
   if (!signer) {
     alert("Connect wallet first");
@@ -110,15 +110,12 @@ async function createCampaign() {
       : "Campaign created, but ID not found";
 }
 
-// === SHOW CAMPAIGN ===
+// SHOW CAMPAIGN
 async function showCampaign() {
   if (!provider) return;
 
   const campaignId = document.getElementById("donateId").value;
-  if (campaignId === "") {
-    alert("Enter campaign ID");
-    return;
-  }
+  if (campaignId === "") return;
 
   const platform = new ethers.Contract(
     AID_PLATFORM_ADDRESS,
@@ -140,14 +137,36 @@ async function showCampaign() {
   if (campaign.finalized) status = "Finalized";
 
   document.getElementById("status").innerText = status;
+
+  // BALANCES
+  document.getElementById("raised").innerText = ethers.formatEther(
+    campaign.raised,
+  );
+
+  document.getElementById("goalValue").innerText = ethers.formatEther(
+    campaign.goal,
+  );
 }
 
-// === DONATE ===
+// DONATE
 async function donate() {
-  if (!signer) return;
+  if (!signer) {
+    alert("Connect wallet first");
+    return;
+  }
 
   const campaignId = document.getElementById("donateId").value;
-  if (campaignId === "") return;
+  const amount = document.getElementById("donateAmount").value;
+
+  if (campaignId === "" || amount === "") {
+    alert("Select campaign and enter amount");
+    return;
+  }
+
+  if (Number(amount) <= 0) {
+    alert("Donation amount must be greater than 0");
+    return;
+  }
 
   const platform = new ethers.Contract(
     AID_PLATFORM_ADDRESS,
@@ -156,17 +175,21 @@ async function donate() {
   );
 
   const tx = await platform.donate(campaignId, {
-    value: ethers.parseEther("0.01"),
+    value: ethers.parseEther(amount),
   });
 
   document.getElementById("txStatus").innerText =
     "Transaction sent: " + tx.hash;
 
   await tx.wait();
+
   document.getElementById("txStatus").innerText = "Donation confirmed!";
+
+  // AUTO REFRESH CAMPAIGN DATA
+  await showCampaign();
 }
 
-// === CAMPAIGN LIST ===
+// CAMPAIGN LIST
 async function loadCampaignList() {
   if (!provider) return;
 
@@ -201,7 +224,7 @@ async function loadCampaignList() {
   }
 }
 
-// === SELECT FROM LIST ===
+// SELECT FROM LIST
 function selectCampaign(id) {
   document.getElementById("donateId").value = id;
   showCampaign();

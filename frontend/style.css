@@ -44,7 +44,7 @@ h1 {
 
 /* buttons */
 button {
-  background: #4f46e5;
+  background: #ca4738;
   color: white;
   border: none;
   padding: 10px 16px;
@@ -54,7 +54,7 @@ button {
 }
 
 button:hover {
-  background: #4338ca;
+  background: #b63030;
 }
 
 /* text */

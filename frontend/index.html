@@ -90,8 +90,27 @@
           <span id="status">-</span>
         </p>
 
+        <p class="value">
+          <strong>Raised:</strong>
+          <span id="raised">-</span> ETH
+        </p>
+
+        <p class="value">
+          <strong>Goal:</strong>
+          <span id="goalValue">-</span> ETH
+        </p>
         <br />
-        <button onclick="donate()">Donate 0.01 ETH</button>
+        <input
+          id="donateAmount"
+          type="number"
+          step="0.001"
+          min="0.001"
+          placeholder="Amount in ETH"
+        />
+
+        <br /><br />
+
+        <button onclick="donate()">Donate</button>
         <p id="txStatus"></p>
       </div>
     </div>
