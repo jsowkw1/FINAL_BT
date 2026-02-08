@@ -18,14 +18,22 @@
         A blockchain-based charity platform running on Ethereum Sepolia testnet
       </p>
 
-      <!-- Wallet -->
+      <!-- WALLET -->
       <div class="section">
         <div class="label">Wallet connection</div>
         <button onclick="connectWallet()">Connect Wallet</button>
         <p id="account" class="value">Not connected</p>
       </div>
 
-      <!-- Token balance -->
+      <!-- ETH BALANCE -->
+      <div class="section">
+        <div class="label">Your ETH Balance</div>
+        <button onclick="checkEthBalance()">Check ETH Balance</button>
+        <p id="ethBalance" class="value">-</p>
+        <p class="note">Sepolia test ETH</p>
+      </div>
+
+      <!-- TOKEN BALANCE -->
       <div class="section">
         <div class="label">Your AID Token Balance</div>
         <button onclick="checkTokenBalance()">Check AID Token Balance</button>
@@ -35,27 +43,52 @@
         </p>
       </div>
 
-      <!-- Campaign -->
+      <!-- CREATE CAMPAIGN -->
       <div class="section">
-        <div class="label">Active Charity Campaign</div>
-        <p class="value"><strong>Title:</strong> Help Children</p>
-        <p class="value"><strong>Goal:</strong> 1 ETH</p>
+        <div class="label">Create Charity Campaign</div>
+
+        <input id="title" placeholder="Campaign title" />
+        <br /><br />
+
+        <input id="goal" placeholder="Goal (ETH)" />
+        <br /><br />
+
+        <input id="duration" placeholder="Duration (days)" />
+        <br /><br />
+
+        <button onclick="createCampaign()">Create Campaign</button>
+        <p id="createStatus" class="value"></p>
+      </div>
+
+      <!-- DONATE -->
+      <div class="section">
+        <div class="label">Donate to Campaign</div>
+
+        <input id="donateId" placeholder="Campaign ID (e.g. 0)" />
+        <br /><br />
+
+        <button onclick="showCampaign()">Show Campaign</button>
+        <br /><br />
+
         <p class="value">
-          <strong>Deadline:</strong> Enforced by smart contract
+          <strong>Title:</strong>
+          <span id="campaignTitle">-</span>
         </p>
 
+        <p class="value">
+          <strong>Deadline:</strong>
+          <span id="deadline">-</span>
+        </p>
+
+        <p class="value">
+          <strong>Status:</strong>
+          <span id="status">-</span>
+        </p>
+
+        <br />
         <button onclick="donate()">Donate 0.01 ETH</button>
         <p id="txStatus"></p>
       </div>
-      <p class="value">
-        <strong>Deadline:</strong>
-        <span id="deadline">loading...</span>
-      </p>
-
-      <p class="value">
-        <strong>Status:</strong>
-        <span id="status">-</span>
-      </p>
     </div>
 
     <script src="app.js"></script>
